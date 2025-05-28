@@ -1,0 +1,200 @@
+<!-- Contenedor principal -->
+<div class="container mx-auto px-4 py-4">
+  <div class="card shadow-md rounded-lg border border-gray-200">
+    <div class="card-header flex justify-between items-center bg-blue-600 rounded-t-lg px-6 py-2">
+      <h3 class="text-xl font-semibold text-white">Lista de Asignaciones</h3>
+      <div class="flex gap-2">
+        <button class="btn btn-outline-primary hover:bg-blue-50 transition-colors duration-200 py-1 px-3" (click)="filterAssignments('active')">
+          <i class="fas fa-check-circle mr-2"></i>Activas
+        </button>
+        <button class="btn btn-outline-danger hover:bg-red-50 transition-colors duration-200 py-1 px-3" (click)="filterAssignments('inactive')">
+          <i class="fas fa-times-circle mr-2"></i>Inactivas
+        </button>
+        <button class="btn btn-primary" (click)="openModal()">
+          <i class="fas fa-plus mr-2"></i>Nueva Asignación
+        </button>
+      </div>
+    </div>
+    <div class="card-body px-0 py-0">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">USUARIO</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DOCUMENTO</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CAJA</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FECHA ASIGNACIÓN</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngIf="filteredAssignments.length === 0">
+              <td colspan="5" class="text-center py-8 text-gray-400 text-lg">Sin asignaciones</td>
+            </tr>
+            <tr *ngFor="let assignment of filteredAssignments" class="hover:bg-gray-50">
+              <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{ assignment.userData.fullName }}</td>
+              <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{ assignment.userData.document }}</td>
+              <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{ assignment.boxData.code }}</td>
+              <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{ assignment.assignmentDate | date:'dd/MM/yyyy' }}</td>
+              <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                <button class="btn btn-info btn-sm mr-2 hover:bg-blue-400 transition-colors duration-200" (click)="viewDetails(assignment)">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-warning btn-sm mr-2 hover:bg-yellow-500 transition-colors duration-200" (click)="editAssignment(assignment)">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger btn-sm mr-2 hover:bg-red-600 transition-colors duration-200" (click)="deleteAssignment(assignment.id)">
+                  <i class="fas fa-trash"></i>
+                </button>
+                <button *ngIf="assignment.status === 'inactive'" 
+                        class="btn btn-success btn-sm hover:bg-green-600 transition-colors duration-200" 
+                        (click)="restoreAssignment(assignment)">
+                  <i class="fas fa-undo-alt"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Agregar/Editar -->
+<div *ngIf="showModal" class="fixed inset-0 bg-gray-700 bg-opacity-60 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+  <div class="relative mx-auto p-0 border w-full max-w-2xl shadow-2xl rounded-2xl bg-white">
+    <!-- Encabezado -->
+    <div class="flex justify-between items-center rounded-t-2xl bg-gradient-to-r from-blue-600 to-blue-400 px-6 py-4">
+      <h3 class="text-2xl font-bold text-white flex items-center">
+        <i class="fas" [ngClass]="editingAssignment ? 'fa-edit text-white text-3xl mr-3' : 'fa-plus-circle text-white text-3xl mr-3'"></i>
+        {{ editingAssignment ? 'Editar Asignación' : 'Nueva Asignación' }}
+      </h3>
+      <button class="text-white hover:text-blue-200 transition-colors duration-200 text-2xl" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <!-- Cuerpo -->
+    <form (ngSubmit)="onSubmit()" class="space-y-6 px-8 py-6">
+      <div class="bg-blue-50 p-6 rounded-xl shadow-sm mb-4">
+        <h4 class="text-lg font-semibold text-blue-700 mb-4 flex items-center">
+          <i class="fas fa-box text-blue-500 text-xl mr-2"></i>Información de la Caja
+        </h4>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Caja</label>
+          <select class="form-select w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" [(ngModel)]="assignment.boxId" name="boxId" required>
+            <option value="">Seleccione una caja</option>
+            <option *ngFor="let box of boxes" [value]="box.id">
+              {{ box.code }} - {{ box.type }}
+            </option>
+          </select>
+        </div>
+      </div>
+      <div class="bg-green-50 p-6 rounded-xl shadow-sm mb-4">
+        <h4 class="text-lg font-semibold text-green-700 mb-4 flex items-center">
+          <i class="fas fa-user text-green-500 text-xl mr-2"></i>Datos del Usuario
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+            <input type="text" class="form-control w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" [(ngModel)]="assignment.userData.fullName" name="fullName" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Documento</label>
+            <input type="text" class="form-control w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" [(ngModel)]="assignment.userData.document" name="document" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+            <input type="text" class="form-control w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" [(ngModel)]="assignment.userData.address" name="address" required>
+          </div>
+        </div>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-xl shadow-sm mb-4">
+        <h4 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+          <i class="fas fa-comment-alt text-gray-500 text-xl mr-2"></i>Observaciones
+        </h4>
+        <textarea class="form-control w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" [(ngModel)]="assignment.observations" name="observations" rows="3" placeholder="Ingrese observaciones..."></textarea>
+      </div>
+      <div class="flex justify-end pt-4 border-t">
+        <button type="button" class="btn btn-secondary hover:bg-gray-600 transition-colors duration-200 text-base px-6 py-2 rounded-lg" (click)="closeModal()">
+          <i class="fas fa-times mr-2"></i>Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary hover:bg-blue-600 transition-colors duration-200 text-base px-6 py-2 rounded-lg ml-2">
+          <i class="fas" [ngClass]="editingAssignment ? 'fa-save' : 'fa-plus'"></i>
+          <span class="ml-2">{{ editingAssignment ? 'Actualizar' : 'Crear' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Detalles -->
+<div *ngIf="showDetailsModal" class="fixed inset-0 bg-gray-700 bg-opacity-60 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+  <div class="relative mx-auto p-0 border w-full max-w-2xl shadow-2xl rounded-2xl bg-white">
+    <!-- Encabezado -->
+    <div class="flex justify-between items-center rounded-t-2xl bg-gradient-to-r from-blue-600 to-blue-400 px-6 py-4">
+      <h3 class="text-2xl font-bold text-white flex items-center">
+        <i class="fas fa-info-circle text-white text-3xl mr-3"></i>Detalles de la Asignación
+      </h3>
+      <button class="text-white hover:text-blue-200 transition-colors duration-200 text-2xl" (click)="closeDetailsModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <!-- Cuerpo -->
+    <div class="space-y-6 px-8 py-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-blue-50 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+          <i class="fas fa-box text-blue-500 text-2xl"></i>
+          <div>
+            <div class="text-xs text-gray-500 font-semibold uppercase">Caja</div>
+            <div class="text-lg font-bold text-gray-800">{{ selectedAssignment?.boxData?.code }} - {{ selectedAssignment?.boxData?.type }}</div>
+          </div>
+        </div>
+        <div class="bg-green-50 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+          <i class="fas fa-user text-green-500 text-2xl"></i>
+          <div>
+            <div class="text-xs text-gray-500 font-semibold uppercase">Usuario</div>
+            <div class="text-lg font-bold text-gray-800">{{ selectedAssignment?.userData?.fullName }}</div>
+            <div class="text-xs text-gray-500">Documento: <span class="font-semibold text-gray-700">{{ selectedAssignment?.userData?.document }}</span></div>
+            <div class="text-xs text-gray-500">Dirección: <span class="font-semibold text-gray-700">{{ selectedAssignment?.userData?.address }}</span></div>
+          </div>
+        </div>
+        <div class="bg-yellow-50 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+          <i class="fas fa-calendar-alt text-yellow-500 text-2xl"></i>
+          <div>
+            <div class="text-xs text-gray-500 font-semibold uppercase">Fecha de Asignación</div>
+            <div class="text-lg font-bold text-gray-800">{{ selectedAssignment?.assignmentDate | date:'dd/MM/yyyy' }}</div>
+          </div>
+        </div>
+        <div class="bg-purple-50 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+          <i class="fas fa-calendar-check text-purple-500 text-2xl"></i>
+          <div>
+            <div class="text-xs text-gray-500 font-semibold uppercase">Fecha de Registro</div>
+            <div class="text-lg font-bold text-gray-800">{{ selectedAssignment?.registrationDate | date:'dd/MM/yyyy' }}</div>
+          </div>
+        </div>
+        <div class="bg-gray-50 p-4 rounded-xl flex items-start gap-4 shadow-sm md:col-span-2">
+          <i class="fas fa-comment-alt text-gray-500 text-2xl mt-1"></i>
+          <div>
+            <div class="text-xs text-gray-500 font-semibold uppercase">Observaciones</div>
+            <div class="text-base text-gray-700 whitespace-pre-line">{{ selectedAssignment?.observations || 'Sin observaciones' }}</div>
+          </div>
+        </div>
+        <!-- Estado -->
+        <div *ngIf="selectedAssignment?.status" [ngClass]="{'bg-green-50': selectedAssignment?.status?.toLowerCase() === 'active', 'bg-red-50': selectedAssignment?.status?.toLowerCase() === 'inactive'}" class="p-4 rounded-xl flex items-center gap-4 shadow-sm md:col-span-2">
+          <i class="fas" [ngClass]="{'fa-check-circle text-green-500': selectedAssignment?.status?.toLowerCase() === 'active', 'fa-times-circle text-red-500': selectedAssignment?.status?.toLowerCase() === 'inactive'}" class="text-2xl"></i>
+          <div>
+            <div class="text-xs text-gray-500 font-semibold uppercase">Estado</div>
+            <div class="text-lg font-bold" [ngClass]="{'text-green-800': selectedAssignment?.status?.toLowerCase() === 'active', 'text-red-800': selectedAssignment?.status?.toLowerCase() === 'inactive'}">
+              {{ selectedAssignment?.status?.toLowerCase() === 'active' ? 'Activa' : 'Inactiva' }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end pt-4 border-t">
+        <button class="btn btn-secondary hover:bg-gray-600 transition-colors duration-200 text-base px-6 py-2 rounded-lg" (click)="closeDetailsModal()">
+          <i class="fas fa-times mr-2"></i>Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 
